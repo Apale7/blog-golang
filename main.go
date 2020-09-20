@@ -1,18 +1,16 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
 	_ "blog-gin/db"
 )
 
 func main() {
-	r := gin.Default()
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"Blog":   "www.flysnow.org",
-			"wechat": "flysnow_org",
-		})
-	})
-	r.Run(":8080")
-
+	//r := gin.Default()
+	//r.GET("/", middleware.LoginCheck(), func(c *gin.Context) {
+	//	c.String(200, "登录成功")
+	//})
+	//r.Run(":8080")
+	//println(db.Exist("hello"))
+	//println(db.Exist("apale"))
 }
+
