@@ -16,7 +16,7 @@ type Mysql struct {
 type User struct {
 	gorm.Model
 	Username string `gorm:"size:32;unique;not null;index:username_idx"`
-	Password string `gorm:"size:32;not null"`
+	Password string `gorm:"size:128;not null"`
 }
 
 type Blog struct {

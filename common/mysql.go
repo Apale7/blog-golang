@@ -13,7 +13,7 @@ import (
 var Db *gorm.DB
 var err error
 
-const base string = "%s:%s@tcp(%s:%d)/%s?charset=utf8"
+const base string = "%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=true"
 
 func init() {
 	viper.SetConfigName("db_conf")
