@@ -1,4 +1,4 @@
-package db
+package common
 
 import (
 	"github.com/garyburd/redigo/redis"
