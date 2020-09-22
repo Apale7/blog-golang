@@ -20,9 +20,9 @@ func LoginCheck() gin.HandlerFunc {
 			return
 		}
 		tokenString = tokenString[7:]
-		token, claims, err := common.ParseToken(tokenString)
+		token, claims, err := common.ParseToken(tokenString, false)
 		if err != nil || !token.Valid{
-			ctx.JSON(http.StatusUnauthorized, gin.H{"code": 401, "msg": "权限不足"})
+			ctx.JSON(http.StatusUnauthorized, gin.H{"code": 401, "msg": "令牌已过期，请刷新"})
 			ctx.Abort()
 			return
 		}

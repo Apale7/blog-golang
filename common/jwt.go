@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var jwtKey = []byte{}
+var accessKey, refreshKey []byte
 
 func init() {
 	viper.SetConfigName("JWT_conf")
@@ -18,8 +18,9 @@ func init() {
 		log.Error(errors.WithStack(err))
 		panic("viper readInConfig error")
 	}
-	jwtKey = []byte(viper.GetString("key"))
-	log.Println(string(jwtKey))
+	accessKey = []byte(viper.GetString("accessKey"))
+	refreshKey = []byte(viper.GetString("refreshKey"))
+	log.Println(string(accessKey), string(refreshKey))
 }
 
 type Claims struct {
@@ -27,29 +28,46 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
-func ReleaseToken(user model.User) (string, error) {
-	expirationTime := time.Now().Add(7*24*time.Hour)
+func ReleaseToken(user model.User, isRefresh bool) (string, error) {
+	var expirationTime time.Time
+	if isRefresh {
+		expirationTime = time.Now().Add(120 * time.Minute)
+	} else {
+		expirationTime = time.Now().Add(30 * time.Minute)
+	}
+
+	//var claims *Claims
 	claims := &Claims{
 		UserId: user.ID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
-			IssuedAt: time.Now().Unix(),
-			Issuer: "apale",
-			Subject: "user token",
+			IssuedAt:  time.Now().Unix(),
+			Issuer:    "apale",
+			Subject:   "user token",
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
+	var tokenString string
+	var err error
+	if isRefresh {
+		tokenString, err = token.SignedString(refreshKey)
+	} else {
+		tokenString, err = token.SignedString(accessKey)
+	}
 	if err != nil {
 		return "", err
 	}
 	return tokenString, nil
 }
 
-func ParseToken(tokenString string)  (*jwt.Token, *Claims, error){
+func ParseToken(tokenString string, isRefresh bool) (*jwt.Token, *Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
+		if isRefresh {
+			return refreshKey, nil
+		} else {
+			return accessKey, nil
+		}
 	})
 	return token, claims, err
 }
