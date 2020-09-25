@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -64,7 +65,7 @@ func Register(ctx *gin.Context) {
 	}
 	newUser := model.User{
 		Username: username,
-		Nickname: nickname,
+		Nickname: html.EscapeString(nickname),
 		Password: string(hashedPassword),
 	}
 	db.Create(&newUser)
