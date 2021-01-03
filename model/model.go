@@ -22,8 +22,8 @@ type User struct {
 
 type Blog struct {
 	gorm.Model
-	Title   string `gorm:"size:128;not null"`
-	Content string `gorm:"type:longtext;not null"`
+	Title   string `gorm:"size:128;not null" json:"title"`
+	Content string `gorm:"type:longtext;not null" json:"content"`
 	UserID uint
 }
 

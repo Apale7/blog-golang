@@ -1,24 +1,28 @@
 package dto
 
 import (
+	"blog-gin/common"
 	"blog-gin/model"
-	"time"
 )
 
 type BlogDTO struct {
-	Id        uint      `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	UserId    uint      `json:"user_id"`
+	Id        uint   `json:"id"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	CreatedAt int64  `json:"created_at"`
+	Nickname  string `json:"nickname"`
 }
 
-func ParseBlogDTO(blog model.Blog) BlogDTO {
-	return BlogDTO{
+func ParseBlogDTO(blog model.Blog) *BlogDTO {
+	ret := &BlogDTO{
 		Id:        blog.ID,
 		Title:     blog.Title,
 		Content:   blog.Content,
-		CreatedAt: blog.CreatedAt,
-		UserId:    blog.UserID,
+		CreatedAt: blog.CreatedAt.Unix(),
 	}
+	db := common.GetDb()
+	user := model.User{}
+	db.Model(&model.User{}).Select("nickname").Where("id=?", blog.UserID).First(&user)
+	ret.Nickname = user.Nickname
+	return ret
 }

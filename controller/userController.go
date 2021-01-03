@@ -6,6 +6,7 @@ import (
 	"blog-gin/model"
 	"blog-gin/response"
 	"encoding/json"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -16,6 +17,20 @@ import (
 	"net/http"
 	"strings"
 )
+
+func WhoAmI(c *gin.Context) {
+	userInterface, exist := c.Get("user")
+	if !exist {
+		response.Fail(c, nil, "未登录")
+		return
+	}
+	user := userInterface.(model.User)
+	response.Success(c, gin.H{
+		"nickname": user.Nickname,
+		"username": user.Username,
+		"id":       user.ID,
+	}, "你是"+user.Nickname)
+}
 
 func Register(ctx *gin.Context) {
 	db := common.GetDb()
@@ -72,61 +87,64 @@ func Register(ctx *gin.Context) {
 	response.Success(ctx, nil, "注册成功")
 }
 
-func Login(ctx *gin.Context) {
+func Login(c *gin.Context) {
+	session := sessions.Default(c)
 	db := common.GetDb()
 	userInfo := struct {
-		Username string
-		Password string
+		Username string `json:"username"`
+		Password string `json:"password"`
 	}{}
-	bytes, err := ioutil.ReadAll(ctx.Request.Body)
-	if err != nil {
-		response.Response(ctx, http.StatusInternalServerError, 500, nil, "系统异常")
-
-		log.Error(errors.WithStack(err))
-		return
-	}
-	err = json.Unmarshal(bytes, &userInfo)
-	if err != nil {
-		response.Response(ctx, http.StatusBadRequest, 400, nil, "请求参数错误")
-
+	if err := c.BindJSON(&userInfo); err != nil {
+		response.Response(c, http.StatusBadRequest, 400, nil, "参数错误")
 		return
 	}
 	username, password := userInfo.Username, userInfo.Password
 	if len(username) == 0 {
-		response.Response(ctx, http.StatusBadRequest, 400, nil, "用户名或密码错误")
+		response.Response(c, http.StatusBadRequest, 400, nil, "用户名或密码错误")
 		return
 	}
 	if len(password) < 6 {
-		response.Response(ctx, http.StatusBadRequest, 400, nil, "用户名或密码错误")
+		response.Response(c, http.StatusBadRequest, 400, nil, "用户名或密码错误")
 		return
 	}
 	var user model.User
-	db.Where("username = ?", username).First(&user)
+	db.Where("username = ?", username).Take(&user)
 	if user.ID == 0 {
-		response.Response(ctx, http.StatusBadRequest, 400, nil, "用户名或密码错误")
-
+		response.Response(c, http.StatusBadRequest, 400, nil, "用户名或密码错误")
 		return
 	}
 	//log.Println(user.Password)
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		log.Error(errors.WithStack(err))
-		response.Response(ctx, http.StatusBadRequest, 400, nil, "用户名或密码错误")
+		response.Response(c, http.StatusBadRequest, 400, nil, "用户名或密码错误")
+		return
+	}
 
+	session.Set("user_id", user.ID)
+	if err := session.Save(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
 		return
 	}
-	accessToken, err := common.ReleaseToken(user, false)
-	if err != nil {
-		response.Response(ctx, http.StatusInternalServerError, 500, nil, "系统异常")
-		log.Error(errors.WithStack(err))
+	response.Success(c, gin.H{
+		"nickname": user.Nickname,
+		"username": user.Username,
+		"id":       user.ID,
+	}, "登录成功")
+}
+
+func Logout(c *gin.Context) {
+	session := sessions.Default(c)
+	user := session.Get("user_id")
+	if user == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid session token"})
 		return
 	}
-	refreshToken, err := common.ReleaseToken(user, true)
-	if err != nil {
-		response.Response(ctx, http.StatusInternalServerError, 500, nil, "系统异常")
-		log.Error(errors.WithStack(err))
+	session.Delete("user_id")
+	if err := session.Save(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
 		return
 	}
-	response.Success(ctx, gin.H{"accessToken": accessToken, "refreshToken": refreshToken}, "登录成功")
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
 }
 
 func Refresh(ctx *gin.Context) {
